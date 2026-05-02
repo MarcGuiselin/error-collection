@@ -2,12 +2,12 @@
 name = "error-collection"
 authors = ["MarcGuiselin"]
 categories = ["rust-patterns", "development-tools::debugging"]
-version = "1.0.1"
+version = "1.0.2"
 edition = "2024"
 description = "A generic collection around dynamic errors"
 license = "MIT OR Apache-2.0"
 homepage = "https://crates.io/crates/error-collection"
-repository = "https://github.com/wasvy-org/wasvy"
+repository = "https://github.com/MarcGuiselin/error-collection"
 readme = "README.md"
 publish = true
 

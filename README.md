@@ -22,7 +22,7 @@ fn setup() -> Result<()> {
 
 We want the error to describe how setup failed, but we return at the very first instance of an error. We are loosing valuable information during runtime that could help debug a problem!
 
-An [Errors](https://docs.rs/error-collection/latest/error-collection/struct.Errors.html) collection can help with this problem:
+An [Errors](https://docs.rs/error-collection/latest/error_collection/struct.Errors.html) collection can help with this problem:
 
 ```rust,ignore
 fn setup() -> Result<()> {
@@ -42,4 +42,4 @@ While this is more verbose, we now get a complete error when we have multiple fa
    2. Camera needs film
 ```
 
-For more examples see the docs for the [Errors](https://docs.rs/error-collection/latest/error-collection/struct.Errors.html) struct.
+For more examples see the docs for the [Errors](https://docs.rs/error-collection/latest/error_collection/struct.Errors.html) struct.
