@@ -29,6 +29,10 @@ pub type ErrorCollection = Errors;
 /// # }
 /// #
 /// fn check_file_integrity(raw: Vec<u8>) -> anyhow::Result<()> {
+///   if raw.len() < 123 {
+///      bail!("Data too short")
+///   }
+///
 ///   let Header { hash: expected_hash } = read_header(&raw[0..123])?;
 ///   let contents = str::from_utf8(&raw[123..])?;
 ///
@@ -52,7 +56,7 @@ pub type ErrorCollection = Errors;
 /// An [Errors] collection can help with this problem:
 ///
 /// ```
-/// # use anyhow::{anyhow, Result};
+/// # use anyhow::{anyhow, bail, Result};
 /// # use error_collection::Errors;
 /// # #[derive(Debug, Clone, Copy)]
 /// # struct Header { hash: u64 }
@@ -66,6 +70,10 @@ pub type ErrorCollection = Errors;
 /// # }
 /// #
 /// fn check_file_integrity(raw: Vec<u8>) -> anyhow::Result<()> {
+///   if raw.len() < 123 {
+///      bail!("Data too short")
+///   }
+///
 ///   let mut errors = Errors::new();
 ///
 ///   // Convert the results to options
