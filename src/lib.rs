@@ -120,7 +120,7 @@ impl Errors {
     where
         E: Into<anyhow::Error>,
     {
-        match result.into() {
+        match result {
             Ok(value) => Some(value),
             Err(err) => {
                 // Flatten out Errors
@@ -161,7 +161,7 @@ fn format_errors(
     match error {
         Err(error) if f.alternate() => write_padded(&format!("{:#}", error), f, indent),
         Err(error) => write_padded(&format!("{}", error), f, indent),
-        Ok(errors) if errors.len() == 0 => writeln!(f, "none"),
+        Ok(errors) if errors.is_empty() => writeln!(f, "none"),
         Ok(errors) if errors.len() == 1 => format_errors(Err(&errors[0]), f, indent),
         Ok(errors) => {
             writeln!(f, "{} errors:", errors.len())?;
@@ -183,7 +183,7 @@ fn spaces(padding: usize) -> &'static str {
 fn write_padded(string: &str, f: &mut fmt::Formatter<'_>, padding: usize) -> fmt::Result {
     let padding = spaces(padding + PADDING);
     for (idx, line) in string.split('\n').enumerate() {
-        let padding = if idx == 0 { "" } else { &padding };
+        let padding = if idx == 0 { "" } else { padding };
         writeln!(f, "{padding}{line}")?;
     }
 
