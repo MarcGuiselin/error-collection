@@ -2,9 +2,9 @@
 name = "error-collection"
 authors = ["MarcGuiselin"]
 categories = ["rust-patterns", "development-tools::debugging"]
-version = "1.0.0"
+version = "1.0.1"
 edition = "2024"
-description = "Bevy WASM"
+description = "A generic collection around dynamic errors"
 license = "MIT OR Apache-2.0"
 homepage = "https://crates.io/crates/error-collection"
 repository = "https://github.com/wasvy-org/wasvy"
