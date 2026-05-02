@@ -157,45 +157,47 @@ const PADDING: usize = 3;
 
 impl fmt::Display for Errors {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        format_errors(Ok(self), f, 0)
+        format_collection(f, self, 0)
     }
 }
 
-fn format_errors(
-    error: Result<&Errors, &anyhow::Error>,
-    f: &mut fmt::Formatter<'_>,
-    indent: usize,
-) -> fmt::Result {
-    match error {
-        Err(error) if f.alternate() => write_padded(&format!("{:#}", error), f, indent),
-        Err(error) => write_padded(&format!("{}", error), f, indent),
-        Ok(errors) if errors.is_empty() => writeln!(f, "none"),
-        Ok(errors) if errors.len() == 1 => format_errors(Err(&errors[0]), f, indent),
-        Ok(errors) => {
-            writeln!(f, "{} errors:", errors.len())?;
-            for (idx, err) in errors.iter().enumerate() {
-                write!(f, "{}{}. ", " ".repeat(indent + PADDING), idx + 1)?;
-                let error = err.downcast_ref::<Errors>().ok_or(err);
-                format_errors(error, f, indent + PADDING)?;
+/// Custom formatter for Errors
+fn format_collection(f: &mut fmt::Formatter<'_>, errors: &Errors, indent: usize) -> fmt::Result {
+    if errors.is_empty() {
+        writeln!(f, "none")
+    } else if errors.len() == 1 {
+        format_error(f, &errors[0], indent)
+    } else {
+        writeln!(f, "{} errors:", errors.len())?;
+        for (idx, error) in errors.iter().enumerate() {
+            write!(f, "{}{}. ", spaces(indent + PADDING), idx + 1)?;
+            match error.downcast_ref::<Errors>() {
+                None => format_error(f, error, indent + PADDING)?,
+                Some(errors) => format_collection(f, errors, indent + PADDING)?,
             }
-
-            Ok(())
         }
+        Ok(())
     }
 }
 
-fn spaces(padding: usize) -> &'static str {
-    &"                                        "[..padding]
-}
-
-fn write_padded(string: &str, f: &mut fmt::Formatter<'_>, padding: usize) -> fmt::Result {
-    let padding = spaces(padding + PADDING);
-    for (idx, line) in string.split('\n').enumerate() {
+/// Custom formatter for an anyhow::Error nested in a collection
+fn format_error(f: &mut fmt::Formatter<'_>, error: &anyhow::Error, indent: usize) -> fmt::Result {
+    let padding = spaces(indent + PADDING);
+    let error_string = if f.alternate() {
+        format!("{:#}", error)
+    } else {
+        format!("{}", error)
+    };
+    for (idx, line) in error_string.split('\n').enumerate() {
         let padding = if idx == 0 { "" } else { padding };
         writeln!(f, "{padding}{line}")?;
     }
-
     Ok(())
+}
+
+/// Zero-alloc version of " ".repeat(x)
+fn spaces(indent: usize) -> &'static str {
+    &"                                "[..indent.min(32)]
 }
 
 impl StdError for Errors {}
