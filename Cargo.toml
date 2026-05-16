@@ -2,7 +2,7 @@
 name = "error-collection"
 authors = ["MarcGuiselin"]
 categories = ["rust-patterns", "development-tools::debugging"]
-version = "1.0.3"
+version = "1.0.4"
 edition = "2024"
 description = "A generic collection around dynamic errors"
 license = "MIT OR Apache-2.0"

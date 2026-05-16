@@ -99,7 +99,7 @@ pub type ErrorCollection = Errors;
 ///    1. Missing lightbulb
 ///    2. Camera needs film
 /// ```
-#[derive(Debug, Default, Deref, DerefMut)]
+#[derive(Default, Deref, DerefMut)]
 pub struct Errors(pub Vec<anyhow::Error>);
 
 impl Errors {
@@ -155,44 +155,97 @@ impl Errors {
 
 const PADDING: usize = 3;
 
-impl fmt::Display for Errors {
+impl fmt::Debug for Errors {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        format_collection(f, self, 0)
+        if f.alternate() {
+            write!(f, "Errors ")?;
+            let mut list = f.debug_list();
+            for error in self.iter() {
+                list.entry(error);
+            }
+            list.finish()
+        } else {
+            debug_collection(f, self, 0)
+        }
     }
 }
 
-/// Custom formatter for Errors
-fn format_collection(f: &mut fmt::Formatter<'_>, errors: &Errors, indent: usize) -> fmt::Result {
+/// Custom debug formatter for Errors
+fn debug_collection(f: &mut fmt::Formatter<'_>, errors: &Errors, indent: usize) -> fmt::Result {
     if errors.is_empty() {
         writeln!(f, "none")
     } else if errors.len() == 1 {
-        format_error(f, &errors[0], indent)
+        debug_error(f, &errors[0], indent)
     } else {
         writeln!(f, "{} errors:", errors.len())?;
         for (idx, error) in errors.iter().enumerate() {
             write!(f, "{}{}. ", spaces(indent + PADDING), idx + 1)?;
             match error.downcast_ref::<Errors>() {
-                None => format_error(f, error, indent + PADDING)?,
-                Some(errors) => format_collection(f, errors, indent + PADDING)?,
+                None => debug_error(f, error, indent + PADDING)?,
+                Some(errors) => debug_collection(f, errors, indent + PADDING)?,
             }
         }
         Ok(())
     }
 }
 
-/// Custom formatter for an anyhow::Error nested in a collection
-fn format_error(f: &mut fmt::Formatter<'_>, error: &anyhow::Error, indent: usize) -> fmt::Result {
+/// Custom debug formatter for an anyhow::Error nested in a collection
+fn debug_error(f: &mut fmt::Formatter<'_>, error: &anyhow::Error, indent: usize) -> fmt::Result {
     let padding = spaces(indent + PADDING);
-    let error_string = if f.alternate() {
-        format!("{:#}", error)
-    } else {
-        format!("{}", error)
-    };
+    let error_string = format!("{error:?}");
     for (idx, line) in error_string.split('\n').enumerate() {
         let padding = if idx == 0 { "" } else { padding };
         writeln!(f, "{padding}{line}")?;
     }
     Ok(())
+}
+
+impl fmt::Display for Errors {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Errors: ")?;
+
+        if self.is_empty() {
+            return writeln!(f, "none");
+        }
+
+        let mut first = true;
+        display_collection(f, self, &mut first)?;
+        writeln!(f)
+    }
+}
+
+/// Custom display formatter for Errors
+fn display_collection(
+    f: &mut fmt::Formatter<'_>,
+    errors: &Errors,
+    first: &mut bool,
+) -> fmt::Result {
+    for error in errors.iter() {
+        match error.downcast_ref::<Errors>() {
+            Some(errors) => display_collection(f, errors, first)?,
+            None => display_error(f, error, first)?,
+        }
+    }
+    Ok(())
+}
+
+/// Custom display formatter for an anyhow::Error nested in a collection
+fn display_error(
+    f: &mut fmt::Formatter<'_>,
+    error: &anyhow::Error,
+    first: &mut bool,
+) -> fmt::Result {
+    if *first {
+        *first = false;
+    } else {
+        write!(f, ", ")?;
+    }
+
+    if f.alternate() {
+        write!(f, "{error:#}")
+    } else {
+        write!(f, "{error}")
+    }
 }
 
 /// Zero-alloc version of " ".repeat(x)
@@ -270,7 +323,7 @@ where
 mod tests {
     use std::io;
 
-    use anyhow::anyhow;
+    use anyhow::{Context, anyhow};
 
     use super::*;
 
@@ -329,8 +382,7 @@ mod tests {
         assert_eq!(errors.len(), 3);
     }
 
-    #[test]
-    fn fmt() {
+    fn deeply_nested() -> Errors {
         let mut child = Errors::new();
         child.push(anyhow!("Generic error 2"));
         child.push(anyhow!("Generic error 3\nnew line"));
@@ -341,14 +393,45 @@ mod tests {
         parent.push(io::Error::from_raw_os_error(1));
 
         let mut errors = Errors::new();
-        errors.push(anyhow!("Generic error 1\nnew line"));
+        errors.push(
+            anyhow::Result::<()>::Err(anyhow!("Original error"))
+                .context("Generic error 1")
+                .unwrap_err(),
+        );
         errors.push(parent);
+        errors
+    }
 
+    #[test]
+    fn display() {
+        let errors = deeply_nested();
+        assert_eq!(
+            format!("{errors}"),
+            "Errors: Generic error 1, Generic error 2, Generic error 3\n\
+            new line, Generic error 4, Operation not permitted (os error 1)\n"
+        );
+    }
+
+    #[test]
+    fn display_alternate() {
+        let errors = deeply_nested();
         assert_eq!(
             format!("{errors:#}"),
+            "Errors: Generic error 1: Original error, Generic error 2, Generic error 3\n\
+            new line, Generic error 4, Operation not permitted (os error 1)\n"
+        );
+    }
+
+    #[test]
+    fn debug() {
+        let errors = deeply_nested();
+        assert_eq!(
+            format!("{errors:?}"),
             "2 errors:
                 1. Generic error 1
-                   new line
+                   \n      \
+                   Caused by:
+                       Original error
                 2. 2 errors:
                    1. 3 errors:
                       1. Generic error 2
@@ -357,6 +440,36 @@ mod tests {
                       3. Generic error 4
                    2. Operation not permitted (os error 1)\n"
                 .replace("\n             ", "\n")
+        );
+    }
+
+    #[test]
+    fn debug_alternate() {
+        let errors = deeply_nested();
+        println!("{errors:#?}");
+        assert_eq!(
+            format!("{errors:#?}"),
+            "Errors [
+                Error {
+                    context: \"Generic error 1\",
+                    source: \"Original error\",
+                },
+                Errors [
+                    Errors [
+                        \"Generic error 2\",
+                        \"Generic error 3\\nnew line\",
+                        Errors [
+                            \"Generic error 4\",
+                        ],
+                    ],
+                    Os {
+                        code: 1,
+                        kind: PermissionDenied,
+                        message: \"Operation not permitted\",
+                    },
+                ],
+            ]"
+            .replace("\n            ", "\n")
         );
     }
 }

@@ -31,7 +31,7 @@ dependencies = [
 
 [[package]]
 name = "error-collection"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "anyhow",
  "derive_more",
